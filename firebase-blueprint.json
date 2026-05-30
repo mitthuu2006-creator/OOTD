@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "BlogPost": {
+      "title": "BlogPost",
+      "description": "An editorial boutique fashion article showcasing style boards or outfit blueprints.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the post" },
+        "title": { "type": "string", "description": "Title of the styling essay" },
+        "slug": { "type": "string", "description": "SEO friendly URL slug of the post" },
+        "category": { "type": "string", "description": "Style category" },
+        "image": { "type": "string", "description": "Unsplash or asset URL for the look image" },
+        "excerpt": { "type": "string", "description": "A brief summary representation" },
+        "content": { "type": "string", "description": "The rich layout markdown content body" },
+        "publishedAt": { "type": "string", "description": "Date of publication stamp" },
+        "readTime": { "type": "string", "description": "Estimated time to read" },
+        "author": {
+          "type": "object",
+          "description": "Author user details"
+        },
+        "likes": { "type": "integer", "description": "Aggregated likes count" },
+        "saves": { "type": "integer", "description": "Aggregated saves count" },
+        "outfitDetails": {
+          "type": "array",
+          "description": "List of tagged garments in the look"
+        }
+      },
+      "required": ["id", "title", "slug", "category", "image", "excerpt", "content", "publishedAt", "likes", "saves"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Reader comments left on a published blog post.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique comment identifier" },
+        "userName": { "type": "string", "description": "Alias of the reader" },
+        "text": { "type": "string", "description": "Message content left by the follower" },
+        "createdAt": { "type": "string", "description": "Temporal timestamp" }
+      },
+      "required": ["id", "userName", "text", "createdAt"]
+    },
+    "UserSession": {
+      "title": "UserSession",
+      "description": "Account details and interaction tracking.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Unique user email address" },
+        "name": { "type": "string", "description": "Human legible name representation" },
+        "savedBlogs": { "type": "array", "description": "Array of saved post IDs" },
+        "likedBlogs": { "type": "array", "description": "Array of liked post IDs" }
+      },
+      "required": ["email", "name"]
+    }
+  },
+  "firestore": {
+    "/blogs/{blogId}": {
+      "schema": "BlogPost",
+      "description": "The collection containing individual OOTD blog posts"
+    },
+    "/blogs/{blogId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "The sub-collection of reader comments per article"
+    },
+    "/users/{userId}": {
+      "schema": "UserSession",
+      "description": "The collection containing user portfolio/deck profiles"
+    }
+  }
+}

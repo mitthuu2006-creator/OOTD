@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper 1: General authentication checks
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Helper 2: ID Poisoning check
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Helper 3: Common request shortcuts
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Default catch-all deny rule: Block everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 1. BlogPost Collection Rules
+    match /blogs/{blogId} {
+      allow read: if true; // Blogs are publicly readable
+
+      allow create: if isSignedIn()
+        && isValidId(blogId)
+        && isValidBlogPost(incoming())
+        && incoming().id == blogId;
+
+      allow update: if isSignedIn()
+        && isValidBlogPost(incoming())
+        // Enforce immutability of original field values like ID, title, etc.
+        && incoming().id == existing().id
+        && incoming().slug == existing().slug
+        && (
+          // Action 1: Like or Save counter updates from client-side
+          (incoming().diff(existing()).affectedKeys().hasOnly(['likes', 'saves']))
+          ||
+          // Action 2: Standard editor edits
+          (incoming().diff(existing()).affectedKeys().hasAny(['excerpt', 'content', 'image', 'outfitDetails', 'category']))
+        );
+
+      allow delete: if isSignedIn(); // Restricted deletion
+    }
+
+    // BlogPost Validation Blueprint
+    function isValidBlogPost(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.slug is string && data.slug.size() <= 200
+        && data.category is string && data.category.size() <= 100
+        && data.image is string && data.image.size() <= 1024
+        && data.excerpt is string && data.excerpt.size() <= 500
+        && data.content is string && data.content.size() <= 20000
+        && data.publishedAt is string && data.publishedAt.size() <= 100
+        && data.readTime is string && data.readTime.size() <= 50
+        && data.likes is int && data.likes >= 0
+        && data.saves is int && data.saves >= 0
+        && (data.outfitDetails == null || (data.outfitDetails is list && data.outfitDetails.size() <= 20));
+    }
+
+    // 2. Comments Subcollection Rules
+    match /blogs/{blogId}/comments/{commentId} {
+      allow read: if true; // Comments are publicly readable
+
+      allow create: if isValidId(blogId)
+        && isValidId(commentId)
+        && isValidComment(incoming())
+        && incoming().id == commentId;
+
+      allow update, delete: if isSignedIn();
+    }
+
+    // Comment Validation Blueprint
+    function isValidComment(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userName is string && data.userName.size() <= 100
+        && data.text is string && data.text.size() <= 2000
+        && data.createdAt is string && data.createdAt.size() <= 100;
+    }
+
+    // 3. UserSession (Profile) Rules
+    match /users/{userId} {
+      // PII Isolation Pattern: Access strictly narrowed to owner only
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserSession(incoming());
+
+      allow update: if isOwner(userId)
+        && isValidUserSession(incoming())
+        && incoming().email == existing().email // Email is immutable
+        && (
+          // Allowed update keys for session changes
+          incoming().diff(existing()).affectedKeys().hasAny(['name', 'savedBlogs', 'likedBlogs'])
+        );
+
+      allow delete: if isOwner(userId);
+    }
+
+    // UserSession Validation Blueprint
+    function isValidUserSession(data) {
+      return data.email is string && data.email.size() <= 150
+        && data.name is string && data.name.size() <= 100
+        && (data.savedBlogs == null || (data.savedBlogs is list && data.savedBlogs.size() <= 500))
+        && (data.likedBlogs == null || (data.likedBlogs is list && data.likedBlogs.size() <= 500));
+    }
+  }
+}

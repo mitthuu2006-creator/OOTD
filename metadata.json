@@ -1,0 +1,6 @@
+{
+  "name": "OOTD - Outfit Journal",
+  "description": "A premium luxury fashion blog and styling journal with neutral palettes, featuring curated OOTD outlooks, Pinterest-style cards, and an interactive AI styling article generator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
